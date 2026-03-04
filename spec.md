@@ -1,27 +1,30 @@
 # VR Video Player
 
 ## Current State
-A side-by-side VR video player with:
-- Two synced video panels (left leader, right follower/muted)
-- Bottom auto-hiding overlay controls (seek bar, play/pause, volume, fullscreen, back button)
-- A center HUD overlay (absolute-positioned at screen center) with large tap-target buttons (play/pause, seek ±10s, mute, expand for volume/fullscreen, hide/show toggle)
+- App launches with a full-screen welcome screen ("WelcomeScreen") with a single "Load Video" button
+- After selecting a file, it transitions to the split-screen VRPlayer
+- Split-screen has per-panel playback controls (seek, play/pause, mute, fullscreen, back)
+- The back button on the left panel returns to the welcome screen
 
 ## Requested Changes (Diff)
 
 ### Add
-- Controls rendered **inside each video panel** (left and right) — identical layout, mirrored in position so both eyes see the controls in the correct location when wearing a VR headset.
-- Each panel gets its own copy of: play/pause, seek ±10s, mute toggle, volume slider, fullscreen button, seek bar with time readout, and back button.
-- Controls inside each panel auto-hide (same 3s timer behaviour), tap to reveal.
+- Split-screen layout visible immediately on app launch (no welcome screen first)
+- A "Load Video" button/overlay shown in both the left and right panels when no video is loaded
+- Each panel shows the VR headset icon and a "Load Video" CTA, so the layout is already split at startup
 
 ### Modify
-- `PlayerControls` component refactored to accept a `side` prop (`"left" | "right"`) and render within the panel's coordinate space rather than as a full-screen overlay.
-- `VRPlayer` renders two `PanelControls` instances — one inside each video panel wrapper div.
+- App initial state: skip the welcome screen, render the split-screen layout directly
+- VRPlayer (or a new wrapper) must support an "empty" state where both panels show a video-selection UI instead of a video
+- Back/change-video control should replace the current "Back" button with a "Load Video" / "Change Video" button inside each panel (accessible during headset use)
 
 ### Remove
-- Center HUD (`showCenterHUD` state, `onToggleCenterHUD` callback, the entire center-positioned control panel, the "Show Controls" pill, `expandedHUD` state, and all related handlers).
-- The single shared `PlayerControls` overlay.
+- Standalone WelcomeScreen component and the "welcome" screen state in App
+- AnimatePresence screen transition (no longer needed since there is only one screen)
 
 ## Implementation Plan
-1. Rewrite `PlayerControls.tsx` → rename to `PanelControls.tsx` (or keep filename, refactor component). Remove center HUD entirely. Accept `side` prop. Render controls at the bottom of a relative-positioned container rather than absolute full-screen.
-2. Update `VRPlayer.tsx`: wrap each `<video>` in a `relative` div, place a `PanelControls` inside each wrapper, remove `showCenterHUD`/`onToggleCenterHUD` state and handler, pass shared playback state/callbacks to both panels.
-3. Ensure seek bar, time display, play/pause, seek ±10s, mute, volume, fullscreen all appear in both panels — functionally identical, visually aligned per-eye.
+1. Remove the welcome screen and `screen` state from App.tsx; always render the split-screen layout
+2. Modify VRPlayer to accept an optional `file` prop (nullable) and render a per-panel empty state (VR icon + "Load Video" button) when no video is loaded
+3. Pass a `onLoadVideo` callback into VRPlayer (and down to each PlayerControls or panel) to trigger the file input
+4. Update PlayerControls to show a "Load Video" / "Change Video" button in each panel when in empty state or when controls are visible, replacing the left-only "Back" button
+5. Ensure the hidden file input lives in App.tsx and is triggered from either panel

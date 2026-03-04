@@ -1,5 +1,5 @@
 import {
-  ChevronLeft,
+  FolderOpen,
   Maximize,
   Minimize,
   Pause,
@@ -25,6 +25,7 @@ interface PanelControlsProps {
   onVolumeChange: (volume: number) => void;
   onMuteToggle: () => void;
   onFullscreenToggle: () => void;
+  onLoadVideo: () => void;
   onBack: () => void;
 }
 
@@ -49,7 +50,7 @@ export function PlayerControls({
   onVolumeChange,
   onMuteToggle,
   onFullscreenToggle,
-  onBack,
+  onLoadVideo,
 }: PanelControlsProps) {
   const seekRef = useRef<HTMLInputElement>(null);
   const volumeRef = useRef<HTMLInputElement>(null);
@@ -130,12 +131,12 @@ export function PlayerControls({
     [onFullscreenToggle],
   );
 
-  const handleBack = useCallback(
+  const handleChangeVideo = useCallback(
     (e: React.MouseEvent) => {
       e.stopPropagation();
-      onBack();
+      onLoadVideo();
     },
-    [onBack],
+    [onLoadVideo],
   );
 
   return (
@@ -147,25 +148,23 @@ export function PlayerControls({
         zIndex: 10,
       }}
     >
-      {/* Back button — top corner (only on left panel to avoid duplication confusion) */}
-      {side === "left" && (
-        <div
-          className="absolute top-0 left-0 pt-3 pl-3 pointer-events-auto"
-          style={{ pointerEvents: isVisible ? "auto" : "none" }}
+      {/* Change Video button — top-left corner of EACH panel */}
+      <div
+        className="absolute top-0 left-0 pt-3 pl-3 pointer-events-auto"
+        style={{ pointerEvents: isVisible ? "auto" : "none" }}
+      >
+        <button
+          type="button"
+          data-ocid={`player.${side}.open_modal_button`}
+          onClick={handleChangeVideo}
+          className="flex items-center gap-1.5 px-3 py-2 rounded-md text-sm font-medium text-white/80 hover:text-white transition-colors"
+          style={{ background: "rgba(0,0,0,0.55)" }}
+          aria-label="Change video file"
         >
-          <button
-            type="button"
-            data-ocid="player.secondary_button"
-            onClick={handleBack}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-md text-sm font-medium text-white/80 hover:text-white transition-colors"
-            style={{ background: "rgba(0,0,0,0.55)" }}
-            aria-label="Back to file selector"
-          >
-            <ChevronLeft className="w-4 h-4" />
-            <span>Back</span>
-          </button>
-        </div>
-      )}
+          <FolderOpen className="w-4 h-4" />
+          <span>Change</span>
+        </button>
+      </div>
 
       {/* Bottom controls bar */}
       <div
