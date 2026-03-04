@@ -72,7 +72,6 @@ export function VRPlayer({ file, onBack }: VRPlayerProps) {
       setIsPlaying(false);
       syncToRight();
       right.pause();
-      // Keep controls visible when paused
       if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
       setControlsVisible(true);
     };
@@ -190,13 +189,11 @@ export function VRPlayer({ file, onBack }: VRPlayerProps) {
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
-      // Space or Enter toggles play/pause
       if (e.key === " " || e.key === "Enter") {
         e.preventDefault();
         handlePlayPause();
         showControls();
       }
-      // Arrow keys seek
       if (e.key === "ArrowRight") {
         handleSeek(Math.min(currentTime + 10, duration));
         showControls();
@@ -208,6 +205,23 @@ export function VRPlayer({ file, onBack }: VRPlayerProps) {
     },
     [handlePlayPause, handleSeek, showControls, currentTime, duration],
   );
+
+  // Shared controls props
+  const controlsProps = {
+    isPlaying,
+    currentTime,
+    duration,
+    volume,
+    isMuted,
+    isFullscreen,
+    isVisible: controlsVisible,
+    onPlayPause: handlePlayPause,
+    onSeek: handleSeek,
+    onVolumeChange: handleVolumeChange,
+    onMuteToggle: handleMuteToggle,
+    onFullscreenToggle: handleFullscreenToggle,
+    onBack,
+  };
 
   return (
     <div
@@ -224,47 +238,37 @@ export function VRPlayer({ file, onBack }: VRPlayerProps) {
       {/* Dual video panels — no gap */}
       <div className="absolute inset-0 flex">
         {/* Left panel (leader) */}
-        <video
-          ref={leftVideoRef}
-          className="w-1/2 h-full object-contain bg-black"
-          playsInline
-          preload="auto"
-        >
-          <track kind="captions" />
-        </video>
+        <div className="relative w-1/2 h-full">
+          <video
+            ref={leftVideoRef}
+            className="w-full h-full object-contain bg-black"
+            playsInline
+            preload="auto"
+          >
+            <track kind="captions" />
+          </video>
+          <PlayerControls side="left" {...controlsProps} />
+        </div>
+
         {/* Right panel (follower, always muted) */}
-        <video
-          ref={rightVideoRef}
-          className="w-1/2 h-full object-contain bg-black"
-          playsInline
-          preload="auto"
-          muted
-        >
-          <track kind="captions" />
-        </video>
+        <div className="relative w-1/2 h-full">
+          <video
+            ref={rightVideoRef}
+            className="w-full h-full object-contain bg-black"
+            playsInline
+            preload="auto"
+            muted
+          >
+            <track kind="captions" />
+          </video>
+          <PlayerControls side="right" {...controlsProps} />
+        </div>
       </div>
 
       {/* Center divider line — subtle seam reference */}
       <div
         className="absolute top-0 bottom-0 left-1/2 w-px pointer-events-none"
         style={{ background: "rgba(255,255,255,0.04)" }}
-      />
-
-      {/* Controls overlay */}
-      <PlayerControls
-        isPlaying={isPlaying}
-        currentTime={currentTime}
-        duration={duration}
-        volume={volume}
-        isMuted={isMuted}
-        isFullscreen={isFullscreen}
-        isVisible={controlsVisible}
-        onPlayPause={handlePlayPause}
-        onSeek={handleSeek}
-        onVolumeChange={handleVolumeChange}
-        onMuteToggle={handleMuteToggle}
-        onFullscreenToggle={handleFullscreenToggle}
-        onBack={onBack}
       />
     </div>
   );

@@ -4,12 +4,15 @@ import {
   Minimize,
   Pause,
   Play,
+  SkipBack,
+  SkipForward,
   Volume2,
   VolumeX,
 } from "lucide-react";
 import { useCallback, useEffect, useRef } from "react";
 
-interface PlayerControlsProps {
+interface PanelControlsProps {
+  side: "left" | "right";
   isPlaying: boolean;
   currentTime: number;
   duration: number;
@@ -33,6 +36,7 @@ function formatTime(seconds: number): string {
 }
 
 export function PlayerControls({
+  side,
   isPlaying,
   currentTime,
   duration,
@@ -46,14 +50,13 @@ export function PlayerControls({
   onMuteToggle,
   onFullscreenToggle,
   onBack,
-}: PlayerControlsProps) {
+}: PanelControlsProps) {
   const seekRef = useRef<HTMLInputElement>(null);
   const volumeRef = useRef<HTMLInputElement>(null);
 
   const seekProgress = duration > 0 ? (currentTime / duration) * 100 : 0;
   const volumeProgress = isMuted ? 0 : volume * 100;
 
-  // Update CSS custom property for gradient fill
   useEffect(() => {
     if (seekRef.current) {
       seekRef.current.style.setProperty("--seek-progress", `${seekProgress}%`);
@@ -69,75 +72,121 @@ export function PlayerControls({
     }
   }, [volumeProgress]);
 
+  const stopProp = useCallback((e: React.MouseEvent | React.KeyboardEvent) => {
+    e.stopPropagation();
+  }, []);
+
   const handleSeekChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
-      const value = Number.parseFloat(e.target.value);
-      onSeek(value);
+      onSeek(Number.parseFloat(e.target.value));
     },
     [onSeek],
   );
 
   const handleVolumeChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
-      const value = Number.parseFloat(e.target.value);
-      onVolumeChange(value);
+      onVolumeChange(Number.parseFloat(e.target.value));
     },
     [onVolumeChange],
   );
 
-  const handleControlsClick = useCallback(
-    (e: React.MouseEvent | React.KeyboardEvent) => {
+  const handleSeekBack = useCallback(
+    (e: React.MouseEvent) => {
       e.stopPropagation();
+      onSeek(Math.max(currentTime - 10, 0));
     },
-    [],
+    [onSeek, currentTime],
+  );
+
+  const handleSeekForward = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      onSeek(Math.min(currentTime + 10, duration));
+    },
+    [onSeek, currentTime, duration],
+  );
+
+  const handlePlayPause = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      onPlayPause();
+    },
+    [onPlayPause],
+  );
+
+  const handleMute = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      onMuteToggle();
+    },
+    [onMuteToggle],
+  );
+
+  const handleFullscreen = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      onFullscreenToggle();
+    },
+    [onFullscreenToggle],
+  );
+
+  const handleBack = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      onBack();
+    },
+    [onBack],
   );
 
   return (
     <div
-      className="absolute inset-0 z-10 pointer-events-none"
+      className="absolute inset-0 pointer-events-none"
       style={{
         transition: "opacity 0.35s ease",
         opacity: isVisible ? 1 : 0,
-        pointerEvents: isVisible ? "auto" : "none",
+        zIndex: 10,
       }}
     >
-      {/* Back button — top left */}
-      <div className="absolute top-0 left-0 right-0 flex items-start pt-4 px-4">
-        <button
-          type="button"
-          data-ocid="player.secondary_button"
-          onClick={(e) => {
-            e.stopPropagation();
-            onBack();
-          }}
-          className="flex items-center gap-1.5 px-3 py-2 rounded-md text-sm font-medium text-white/80 hover:text-white transition-colors"
-          style={{ background: "rgba(0,0,0,0.55)" }}
-          aria-label="Back to file selector"
+      {/* Back button — top corner (only on left panel to avoid duplication confusion) */}
+      {side === "left" && (
+        <div
+          className="absolute top-0 left-0 pt-3 pl-3 pointer-events-auto"
+          style={{ pointerEvents: isVisible ? "auto" : "none" }}
         >
-          <ChevronLeft className="w-4 h-4" />
-          <span>Back</span>
-        </button>
-      </div>
+          <button
+            type="button"
+            data-ocid="player.secondary_button"
+            onClick={handleBack}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-md text-sm font-medium text-white/80 hover:text-white transition-colors"
+            style={{ background: "rgba(0,0,0,0.55)" }}
+            aria-label="Back to file selector"
+          >
+            <ChevronLeft className="w-4 h-4" />
+            <span>Back</span>
+          </button>
+        </div>
+      )}
 
-      {/* Bottom controls bar — keyboard accessible via role="toolbar" */}
+      {/* Bottom controls bar */}
       <div
         role="toolbar"
-        aria-label="Video controls"
-        className="absolute bottom-0 left-0 right-0 flex flex-col gap-2 px-4 pb-4 pt-8"
+        aria-label={`Video controls ${side} panel`}
+        className="absolute bottom-0 left-0 right-0 flex flex-col gap-2 px-3 pb-3 pt-10"
         style={{
           background:
-            "linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0) 100%)",
+            "linear-gradient(to top, rgba(0,0,0,0.88) 0%, rgba(0,0,0,0) 100%)",
+          pointerEvents: isVisible ? "auto" : "none",
         }}
-        onClick={handleControlsClick}
-        onKeyDown={handleControlsClick}
+        onClick={stopProp}
+        onKeyDown={stopProp}
       >
         {/* Seek row */}
-        <div className="flex items-center gap-3">
-          <span className="text-white/70 text-xs font-mono tabular-nums min-w-[40px]">
+        <div className="flex items-center gap-2">
+          <span className="text-white/70 text-xs font-mono tabular-nums min-w-[36px]">
             {formatTime(currentTime)}
           </span>
           <input
-            data-ocid="player.input"
+            data-ocid={`player.${side}.input`}
             ref={seekRef}
             type="range"
             min={0}
@@ -148,18 +197,31 @@ export function PlayerControls({
             className="vr-seek-slider flex-1"
             aria-label="Seek"
           />
-          <span className="text-white/70 text-xs font-mono tabular-nums min-w-[40px] text-right">
+          <span className="text-white/70 text-xs font-mono tabular-nums min-w-[36px] text-right">
             {formatTime(duration)}
           </span>
         </div>
 
         {/* Controls row */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
+          {/* Seek -10s */}
+          <button
+            type="button"
+            data-ocid={`player.${side}.secondary_button`}
+            onClick={handleSeekBack}
+            className="flex flex-col items-center justify-center w-9 h-9 rounded-full text-white/80 hover:text-white transition-all hover:scale-110 active:scale-95"
+            style={{ background: "rgba(255,255,255,0.08)" }}
+            aria-label="Seek back 10 seconds"
+          >
+            <SkipBack className="w-3.5 h-3.5" />
+            <span className="text-[8px] leading-none opacity-70">10s</span>
+          </button>
+
           {/* Play/Pause */}
           <button
             type="button"
-            data-ocid="player.toggle"
-            onClick={onPlayPause}
+            data-ocid={`player.${side}.toggle`}
+            onClick={handlePlayPause}
             className="flex items-center justify-center w-10 h-10 rounded-full transition-all hover:scale-110 active:scale-95"
             style={{
               background: "oklch(0.78 0.16 195)",
@@ -169,25 +231,46 @@ export function PlayerControls({
             aria-label={isPlaying ? "Pause" : "Play"}
           >
             {isPlaying ? (
-              <Pause className="w-5 h-5 fill-current" />
+              <Pause className="w-4 h-4 fill-current" />
             ) : (
-              <Play className="w-5 h-5 fill-current translate-x-px" />
+              <Play className="w-4 h-4 fill-current translate-x-px" />
             )}
+          </button>
+
+          {/* Seek +10s */}
+          <button
+            type="button"
+            data-ocid={`player.${side}.secondary_button.2`}
+            onClick={handleSeekForward}
+            className="flex flex-col items-center justify-center w-9 h-9 rounded-full text-white/80 hover:text-white transition-all hover:scale-110 active:scale-95"
+            style={{ background: "rgba(255,255,255,0.08)" }}
+            aria-label="Seek forward 10 seconds"
+          >
+            <SkipForward className="w-3.5 h-3.5" />
+            <span className="text-[8px] leading-none opacity-70">10s</span>
           </button>
 
           {/* Mute toggle */}
           <button
             type="button"
-            data-ocid="player.toggle.2"
-            onClick={onMuteToggle}
-            className="flex items-center justify-center w-9 h-9 rounded-full text-white/80 hover:text-white transition-colors"
-            style={{ background: "rgba(255,255,255,0.08)" }}
+            data-ocid={`player.${side}.toggle.2`}
+            onClick={handleMute}
+            className="flex items-center justify-center w-9 h-9 rounded-full transition-all hover:scale-110 active:scale-95"
+            style={{
+              background: isMuted
+                ? "rgba(255,80,80,0.18)"
+                : "rgba(255,255,255,0.08)",
+              border: `1px solid ${isMuted ? "rgba(255,80,80,0.3)" : "rgba(255,255,255,0.08)"}`,
+              color: isMuted
+                ? "rgba(255,140,140,0.95)"
+                : "rgba(255,255,255,0.80)",
+            }}
             aria-label={isMuted ? "Unmute" : "Mute"}
           >
             {isMuted ? (
-              <VolumeX className="w-4 h-4" />
+              <VolumeX className="w-3.5 h-3.5" />
             ) : (
-              <Volume2 className="w-4 h-4" />
+              <Volume2 className="w-3.5 h-3.5" />
             )}
           </button>
 
@@ -200,7 +283,8 @@ export function PlayerControls({
             step={0.01}
             value={isMuted ? 0 : volume}
             onChange={handleVolumeChange}
-            className="vr-volume-slider"
+            onClick={stopProp}
+            className="vr-volume-slider flex-1 min-w-0"
             aria-label="Volume"
           />
 
@@ -210,16 +294,16 @@ export function PlayerControls({
           {/* Fullscreen */}
           <button
             type="button"
-            data-ocid="player.button"
-            onClick={onFullscreenToggle}
-            className="flex items-center justify-center w-9 h-9 rounded-full text-white/80 hover:text-white transition-colors"
+            data-ocid={`player.${side}.button`}
+            onClick={handleFullscreen}
+            className="flex items-center justify-center w-9 h-9 rounded-full text-white/80 hover:text-white transition-all hover:scale-110 active:scale-95"
             style={{ background: "rgba(255,255,255,0.08)" }}
             aria-label={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
           >
             {isFullscreen ? (
-              <Minimize className="w-4 h-4" />
+              <Minimize className="w-3.5 h-3.5" />
             ) : (
-              <Maximize className="w-4 h-4" />
+              <Maximize className="w-3.5 h-3.5" />
             )}
           </button>
         </div>

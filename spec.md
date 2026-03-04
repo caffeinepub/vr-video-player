@@ -1,30 +1,27 @@
 # VR Video Player
 
 ## Current State
-The project has the standard Caffeine scaffold: React + TypeScript frontend with shadcn/ui components, Tailwind CSS, and a Motoko backend shell. No App.tsx or app-specific code exists yet.
+A side-by-side VR video player with:
+- Two synced video panels (left leader, right follower/muted)
+- Bottom auto-hiding overlay controls (seek bar, play/pause, volume, fullscreen, back button)
+- A center HUD overlay (absolute-positioned at screen center) with large tap-target buttons (play/pause, seek ±10s, mute, expand for volume/fullscreen, hide/show toggle)
 
 ## Requested Changes (Diff)
 
 ### Add
-- Welcome/landing screen with a "Load Video" button to pick a local file from the device
-- Side-by-side (split-screen) video player: two synchronized video panels flush edge-to-edge, optimized for VR headsets
-- Sync logic: play/pause/seek on the left panel mirrors instantly to the right panel; right panel is always muted to prevent audio echo
-- Auto-hiding controls overlay: tap anywhere to show; fades after 3 seconds during playback; stays visible when paused
-- Controls: play/pause button, seek/scrubber bar, volume slider with mute toggle, fullscreen button
-- PWA manifest (manifest.json) with landscape orientation lock
-- Service worker for offline caching
-- iOS/Android meta tags for "Add to Home Screen" / standalone install
+- Controls rendered **inside each video panel** (left and right) — identical layout, mirrored in position so both eyes see the controls in the correct location when wearing a VR headset.
+- Each panel gets its own copy of: play/pause, seek ±10s, mute toggle, volume slider, fullscreen button, seek bar with time readout, and back button.
+- Controls inside each panel auto-hide (same 3s timer behaviour), tap to reveal.
 
 ### Modify
-- index.html: add PWA meta tags and manifest link
+- `PlayerControls` component refactored to accept a `side` prop (`"left" | "right"`) and render within the panel's coordinate space rather than as a full-screen overlay.
+- `VRPlayer` renders two `PanelControls` instances — one inside each video panel wrapper div.
 
 ### Remove
-- Nothing
+- Center HUD (`showCenterHUD` state, `onToggleCenterHUD` callback, the entire center-positioned control panel, the "Show Controls" pill, `expandedHUD` state, and all related handlers).
+- The single shared `PlayerControls` overlay.
 
 ## Implementation Plan
-1. Create `src/frontend/src/App.tsx` with welcome screen and VR player state machine
-2. Create `src/frontend/src/components/VRPlayer.tsx` for the dual-video synchronized player
-3. Create `src/frontend/src/components/PlayerControls.tsx` for the auto-hiding overlay controls
-4. Create `src/frontend/public/manifest.json` for PWA support
-5. Create `src/frontend/public/sw.js` service worker for offline caching
-6. Update `src/frontend/index.html` with PWA meta tags and manifest link
+1. Rewrite `PlayerControls.tsx` → rename to `PanelControls.tsx` (or keep filename, refactor component). Remove center HUD entirely. Accept `side` prop. Render controls at the bottom of a relative-positioned container rather than absolute full-screen.
+2. Update `VRPlayer.tsx`: wrap each `<video>` in a `relative` div, place a `PanelControls` inside each wrapper, remove `showCenterHUD`/`onToggleCenterHUD` state and handler, pass shared playback state/callbacks to both panels.
+3. Ensure seek bar, time display, play/pause, seek ±10s, mute, volume, fullscreen all appear in both panels — functionally identical, visually aligned per-eye.
